@@ -1,30 +1,43 @@
 require File.expand_path("trie_matcher/version", __dir__)
 
+# Trie implementation that acts as a weak mapping
+#
+# Values can be stored for a given prefix, and are returned for the longest prefix.
+# Lookup searches for longer prefixes optimistically, so saturated tries with many lexemes in them will be less efficient
 class TrieMatcher
+  # Build an empty trie
   def initialize
     @root = { nodes: {}, value: nil}
   end
 
-  def []=(key, value)
+  # Store a prefix in the trie, and associate a value with it
+  #
+  # @param prefix [String]
+  # @param value [Object] a value to return if prefix is the longest prefix on lookup
+  # @return [Object] the value that was set
+  def []=(prefix, value)
     current = @root
-    current_key = key
+    current_prefix = prefix
 
-    while current_key != ""
-      current, current_key = find_canididate_insertion_node(current, current_key)
+    while current_prefix != ""
+      current, current_prefix = find_canididate_insertion_node(current, current_prefix)
     end
 
     current[:value] = value
     return value
   end
 
-
-  def [](key)
+  # Perform a prefix search. Will return the value associated with the longest prefix
+  #
+  # @param prefix [String] what to check for a prefix in
+  # @return [Object] the value associated with the longest matching prefix in this trie
+  def [](prefix)
     current = @root
-    current_key = key
+    current_prefix = prefix
 
-    while current != nil && current_key != ""
+    while current != nil && current_prefix != ""
       previous = current
-      current, current_key = next_node(current, current_key)
+      current, current_prefix = next_node(current, current_prefix)
     end
 
     return current[:value] if current
@@ -32,6 +45,7 @@ class TrieMatcher
   end
 
   private
+  # get the node for insertion, splitting shared prefixes into subnodes if necessary
   def find_canididate_insertion_node(current, key)
     # look for a common prefix
     current[:nodes].keys.find do |prefix|
