@@ -1,6 +1,8 @@
 # TrieMatcher
 
-TODO: Write a gem description
+Prefix matching in Ruby using a trie
+
+I built this after needing to match user agents quickly, and found that existing trie implementations did not provide suitable interfaces.
 
 ## Installation
 
@@ -18,7 +20,16 @@ Or install it yourself as:
 
 ## Usage
 
-TODO: Write usage instructions here
+```ruby
+t = TrieMatcher.new
+t["cat"] = "feline"
+t["car"] = "automobile"
+t["bar"] = "exam"
+
+t["cat"] # "feline"
+t["catch"] # "feline"
+t["ca"] # nil
+```
 
 ## Contributing
 
