@@ -60,4 +60,11 @@ describe TrieMatcher do
     expect(t["cats"]).to be 1
   end
 
+  it 'should return the more specific prefix value' do
+    t = TrieMatcher.new
+    t["cat"] = 1
+    t["catch"] = 2
+    expect(t["catcher"]).to be 2
+  end
+
 end
