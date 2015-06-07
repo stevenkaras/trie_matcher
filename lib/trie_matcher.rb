@@ -7,7 +7,7 @@ require File.expand_path("trie_matcher/version", __dir__)
 class TrieMatcher
   # Build an empty trie
   def initialize
-    @root = { nodes: {}, value: nil}
+    @root = { nodes: {}, value: nil, longest_node_length: 0, longest_node: nil }
   end
 
   # Store a prefix in the trie, and associate a value with it
@@ -56,28 +56,42 @@ class TrieMatcher
         return current[:nodes][prefix], key[common_prefix.length..-1]
       else
         old = current[:nodes].delete(prefix)
+        new_suffix = prefix[common_prefix.length..-1]
         new_node = {
           nodes: {
-            prefix[common_prefix.length..-1] => old
+            new_suffix => old
           },
-          value: nil
+          value: nil,
+          longest_node_length: new_suffix.length,
+          longest_node: new_suffix,
         }
         current[:nodes][common_prefix] = new_node
+        if current[:longest_node] == prefix
+          longest_prefix = current[:nodes].keys.max_by(&:length)
+          current[:longest_node_length] = longest_prefix.length
+          current[:longest_node] = longest_prefix
+        end
         return new_node, key[common_prefix.length..-1]
       end
     end
 
     new_node = {
       nodes: {},
-      value: nil
+      value: nil,
+      longest_node: nil,
+      longest_node_length: 0,
     }
+    if key.length > current[:longest_node_length]
+      current[:longest_node_length] = key.length
+      current[:longest_node] = key
+    end
     current[:nodes][key] = new_node
     return new_node, ""
   end
 
   # find the next node from the current one based on the given key
   def next_node(current, key)
-    key.length.times do |l|
+    ([key.length, current[:longest_node_length]].max).times do |l|
       if current[:nodes].has_key?(key[0..-l-1])
         return current[:nodes][key[0..-l-1]], key[-l,l]
       end
@@ -98,4 +112,5 @@ class TrieMatcher
 
     return nil
   end
+
 end
