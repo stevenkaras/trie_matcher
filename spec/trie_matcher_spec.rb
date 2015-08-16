@@ -97,4 +97,15 @@ describe TrieMatcher do
       expect(@t.match("catcher")).to eq []
     end
   end
+
+  describe "set_if_nil" do
+    it "should store a collection" do
+      @t["cat"] = 1
+      @t.set_if_nil("catch", []) << 1
+      @t.set_if_nil("catch", []) << 2
+      @t.set_if_nil("catch", []) << 3
+
+      expect(@t["catch"]).to eq [1,2,3]
+    end
+  end
 end

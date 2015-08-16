@@ -44,6 +44,23 @@ class TrieMatcher
     return previous[:value]
   end
 
+  # Set a value in the trie if it isn't null. Can be used to initialize collections as values
+  #
+  # @param word [String] The word to set the value for
+  # @param value [Object] the value to set, if the value for the word is nil
+  # @return [Object] the value associated with the word
+  def set_if_nil(word, value)
+    current = @root
+    current_prefix = word
+
+    while current_prefix != ""
+      current, current_prefix = find_canididate_insertion_node(current, current_prefix)
+    end
+
+    current[:value] ||= value
+    return current[:value]
+  end
+
   # Perform a prefix search, and return all values in the trie that have this prefix
   #
   # @param prefix [String] the prefix to search the trie with
