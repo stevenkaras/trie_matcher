@@ -44,6 +44,39 @@ class TrieMatcher
     return previous[:value]
   end
 
+  # Perform a prefix search, and return all values in the trie that have this prefix
+  #
+  # @param prefix [String] the prefix to search the trie with
+  # @return [<Object>] the values that start with the given prefix
+  def match(prefix)
+    result = []
+    current = @root
+    current_prefix = prefix
+
+    while current != nil && current_prefix != ""
+      previous, previous_prefix = current, current_prefix
+      current, current_prefix = next_node(current, current_prefix)
+    end
+
+    unless current
+      if current_prefix
+        return []
+      else
+        next_nodes = previous[:nodes].select { |prefix, node| prefix.start_with?(previous_prefix) }.values
+      end
+    else
+      next_nodes = [current]
+    end
+
+    until next_nodes.empty?
+      current = next_nodes.pop
+      result << current[:value]
+      current[:nodes].each { |prefix, node| next_nodes.push(node) }
+    end
+
+    return result.compact
+  end
+
   private
   # get the node for insertion, splitting shared prefixes into subnodes if necessary
   def find_canididate_insertion_node(current, key)

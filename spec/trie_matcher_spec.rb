@@ -66,6 +66,31 @@ describe TrieMatcher do
     @t["catch"] = 2
     expect(@t["cat"]).to be nil
   end
+
+  it 'should return all values that are a prefix' do
+    @t["cats"] = 1
+    @t["foobar"] = 2
+    @t["foobaz"] = 3
+    @t["foobars"] = 4
+    @t["food"] = 5
+
+    expect(@t.match("foo").sort).to eq [2,3,4,5]
   end
 
+  it 'should return a single value when there is only one match' do
+    @t["cats"] = 1
+    @t["dogs"] = 2
+    @t["birds"] = 3
+    @t["bees"] = 4
+
+    expect(@t.match("dog")).to eq [2]
+  end
+
+  it 'should return an empty result when there are no prefix matches' do
+    @t["cat"] = 1
+    @t["dog"] = 2
+    @t["catch"] = 3
+
+    expect(@t.match("catcher")).to eq []
+  end
 end
