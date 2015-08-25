@@ -3,11 +3,11 @@ require File.expand_path("trie_matcher/version", __dir__)
 # Trie implementation that acts as a weak mapping
 #
 # Values can be stored for a given prefix, and are returned for the longest prefix.
-# Lookup searches for longer prefixes optimistically, so saturated tries with many lexemes in them will be less efficient
+# Lookup searches based on a fixed prefix size. This can cause extra memory use and performance degredation on saturated tries with many lexemes.
 class TrieMatcher
   # Build an empty trie
   def initialize
-    @root = { nodes: {}, value: nil, longest_node_length: 0, longest_node: nil }
+    @root = { nodes: {}, value: nil, key_length: nil }
   end
 
   # Store a prefix in the trie, and associate a value with it
@@ -35,7 +35,7 @@ class TrieMatcher
     current = @root
     current_prefix = prefix
 
-    while current != nil && current_prefix != ""
+    while !current.nil? && current_prefix != ""
       previous = current
       current, current_prefix = next_node(current, current_prefix)
     end
@@ -95,58 +95,74 @@ class TrieMatcher
   end
 
   private
-  # get the node for insertion, splitting shared prefixes into subnodes if necessary
-  def find_canididate_insertion_node(current, key)
-    # look for a common prefix
-    current[:nodes].keys.find do |prefix|
-      common_prefix = shared_prefix(key, prefix)
-      next unless common_prefix
-
-      if common_prefix == prefix
-        return current[:nodes][prefix], key[common_prefix.length..-1]
-      else
-        old = current[:nodes].delete(prefix)
-        new_suffix = prefix[common_prefix.length..-1]
-        new_node = {
-          nodes: {
-            new_suffix => old
-          },
-          value: nil,
-          longest_node_length: new_suffix.length,
-          longest_node: new_suffix,
-        }
-        current[:nodes][common_prefix] = new_node
-        if current[:longest_node] == prefix
-          longest_prefix = current[:nodes].keys.max_by(&:length)
-          current[:longest_node_length] = longest_prefix.length
-          current[:longest_node] = longest_prefix
-        end
-        return new_node, key[common_prefix.length..-1]
-      end
-    end
-
+  def insert_node(root, key)
     new_node = {
       nodes: {},
       value: nil,
-      longest_node: nil,
-      longest_node_length: 0,
+      key_length: nil,
     }
-    if key.length > current[:longest_node_length]
-      current[:longest_node_length] = key.length
-      current[:longest_node] = key
+    root[:nodes][key] = new_node
+    return new_node
+  end
+
+  # get the node for insertion, splitting intermediary nodes as necessary
+  def find_canididate_insertion_node(current, key)
+    if current[:key_length].nil?
+      new_node = insert_node(current, key)
+      current[:key_length] = key.length
+      return new_node, ""
     end
-    current[:nodes][key] = new_node
-    return new_node, ""
+
+    # check if we have an existing shared prefix already
+    current_key = key[0...current[:key_length]]
+
+    # look for an existing key path
+    if current[:nodes].has_key?(current_key)
+      return current[:nodes][current_key], key[current_key.length..-1]
+    end
+
+    # search for a shared prefix, and split all the nodes if necessary
+    current[:nodes].keys.each do |prefix|
+      common_prefix = shared_prefix(key, prefix)
+      next unless common_prefix
+
+      new_key_length = common_prefix.length
+
+      split_nodes(current, new_key_length)
+      return current[:nodes][common_prefix], key[new_key_length..-1]
+    end
+
+    # potentially split all other keys
+    if current_key.length < current[:key_length]
+      split_nodes(current, current_key.length)
+    end
+
+    new_node = insert_node(current, current_key)
+    return new_node, key[current_key.length..-1]
+  end
+
+  # split all the branches in the given root to the given length
+  def split_nodes(root, new_length)
+    old_nodes = root[:nodes]
+    split_length = root[:key_length] - new_length
+    root[:key_length] = new_length
+    root[:nodes] = {}
+    old_nodes.each do |key, old|
+      new_node = insert_node(root, key[0...new_length])
+      new_node[:nodes][key[new_length..-1]] = old
+      new_node[:key_length] = split_length
+    end
   end
 
   # find the next node from the current one based on the given key
   def next_node(current, key)
-    ([key.length, current[:longest_node_length]].max).times do |l|
-      if current[:nodes].has_key?(key[0..-l-1])
-        return current[:nodes][key[0..-l-1]], key[-l,l]
-      end
+    return nil, nil unless current[:key_length]
+    next_key = key[0...current[:key_length]]
+    if current[:nodes].has_key?(next_key)
+      return current[:nodes][next_key], key[next_key.length..-1]
+    else
+      return nil, nil
     end
-    return nil, nil
   end
 
   # finds a shared prefix between the two strings, or nil if there isn't any
